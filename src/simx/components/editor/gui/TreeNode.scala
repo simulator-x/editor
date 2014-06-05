@@ -27,7 +27,7 @@ package simx.components.editor.gui
 import simx.core.entity.Entity
 
 import java.util.UUID
-import simx.core.svaractor.SVar
+import simx.core.svaractor.StateParticle
 import simx.core.entity.description.{NamedSValSet, SVal}
 
 abstract class TreeNode() {
@@ -99,7 +99,7 @@ case class EnSVarCollection(parent: Option[TreeNode], var children: Seq[TreeNode
   override def toString = "SVars"
 }
 
-case class EnSVar(sVar: SVar[_], name: Symbol, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
+case class EnSVar(sVar: StateParticle[_], name: Symbol, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
   extends TreeNode {
   def enSVarValue = children.head.asInstanceOf[EnSVarValue]
 

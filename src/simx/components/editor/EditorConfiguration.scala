@@ -25,6 +25,7 @@ import simx.core.ontology.{Symbols, types => gt}
 import simx.core.entity.description.SValSet
 import simx.core.component.ConfigureComponentMessage
 import simx.core.svaractor.SVarActor
+import scala.annotation.meta.param
 
 /*
 * User: martin
@@ -39,7 +40,7 @@ import simx.core.svaractor.SVarActor
 * @param appName The application's name.
 */
 case class EditorConfiguration(appName: String, name: String = "Editor")
-                              (implicit @transient actorContext : SVarActor.Ref)
+                              (implicit @(transient @param) actorContext : SVarActor.Ref)
   extends ConfigureComponentMessage(SValSet(gt.Name(name), gt.Name.addAnnotations(Symbols.application).apply(appName)))
 {
   def targetComponentType = Symbols.editor

@@ -28,7 +28,8 @@
 package simx.components.editor.gui
 
 import swing.Component
-import simx.core.svaractor.{SVarActor, SVar}
+import simx.core.svaractor.{StateParticle, SVarActor, SVar}
+import scala.reflect.runtime.universe.TypeTag
 
 /**
  *  Holds information about SVarViewException exceptions
@@ -42,14 +43,14 @@ abstract class SVarSetterBase {
   //Changes the setter to write to this svar.
   //If the underlying type of the svar is compatible to sVar is not checked.
   //If the types are not compatible, an exception is thrown.
-  def changeRegisteredSvarTo(sVar: SVar[_]): Unit
+  def changeRegisteredSvarTo(sVar: StateParticle[_]): Unit
   def internalUpdate(sVarValue: Any)
 }
 
-abstract class SVarSetter[T] extends SVarSetterBase {
+abstract class SVarSetter[T : TypeTag] extends SVarSetterBase {
   case class Value[U](v : U)
   case class HandleValue[U](handler : U => Unit)
-  private var setter: Option[SVar[T]] = None
+  private var setter: Option[StateParticle[T]] = None
   private val actor = SVarActor.createActor(new SVarActor(){
     addHandler[Value[T]]{
       msg => setter.collect{case svar : SVar[T] => svar.set(msg.v)}
@@ -59,10 +60,10 @@ abstract class SVarSetter[T] extends SVarSetterBase {
     }
   })
 
-  final def changeRegisteredSvarTo(sVar: SVar[_]){
+  final def changeRegisteredSvarTo(sVar: StateParticle[_]){
     if(sVar != null)
       try {
-        setter = Some(sVar.asInstanceOf[SVar[T]])
+        setter = Some(sVar.asInstanceOf[StateParticle[T]])
       } catch {
         case _ : Throwable => throw SVarSetterException("SVarSetter can not handle a sVar of type " +
           sVar.containedValueManifest)

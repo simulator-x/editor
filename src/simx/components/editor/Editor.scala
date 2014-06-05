@@ -21,7 +21,6 @@
 package simx.components.editor
 
 import simx.core.helper.SVarUpdateFunctionMap
-import simx.core.svaractor.SVarActor
 import swing.Publisher
 import simx.core.component.Component
 import gui._
@@ -29,19 +28,72 @@ import simx.core.entity.description._
 import simx.core.ontology.types.Name
 import simx.core.entity.typeconversion.ConvertibleTrait
 import simx.core.entity.Entity
+import simx.core.entity.component.ComponentAspect
+import simx.core.worldinterface.CreationMessage
+import simx.core.worldinterface.eventhandling.{Event, EventHandler, EventDescription}
+import simx.core.svaractor.SVar
 
 //Global Types
-import simx.core.ontology.{Symbols, types => gt}
+import simx.core.ontology.{types => gt, Symbols}
 
 /**
  * User: martin
  * Date: Oct 29, 2010
  */
 
-class Editor(override val componentName : Symbol)
-        extends SVarActor with Component with SVarUpdateFunctionMap with Publisher {
 
-  def componentType = Symbols.editor
+case class EditorComponentAspect(name : Symbol, appName: String = "SimXApp", eventsDisabled: Boolean = false)
+  extends ComponentAspect[Editor](Symbols.editor, name)
+{
+  def getCreateParams: NamedSValSet =
+    NamedSValSet(aspectType,
+      gt.Enabled.withAnnotations(Symbols.event)(!eventsDisabled),
+      gt.Application(appName)
+    )
+
+  def getComponentFeatures: Set[ConvertibleTrait[_]] =
+    Set(gt.Enabled.withAnnotations(Symbols.event), gt.Application)
+}
+
+class Editor(override val componentName : Symbol)
+        extends Component(componentName, Symbols.editor) with SVarUpdateFunctionMap with Publisher with EventHandler {
+
+  private var configAspect: Option[EntityAspect] = None
+
+  protected def requestInitialConfigValues(toProvide: Set[ConvertibleTrait[_]], aspect: EntityAspect, e: Entity) = {
+    configAspect = Some(aspect)
+    aspect.getCreateParams.combineWithValues(toProvide)._1
+  }
+
+  private var configEntity: Option[Entity] = None
+
+  protected def finalizeConfiguration(e: Entity){
+    configEntity = Some(e)
+    configAspect.collect{case ca => publish(EntityConfigurationArrived(e, Map(toTuple(ca))))}
+
+    e.getAllStateParticles.foreach{ triple =>
+      if (triple._1 == Name.sVarIdentifier){
+        triple._3.observe{ a => publish(NewEntityNameArrived(e, a.toString)) }
+        triple._3.get{ a => publish(NewEntityNameArrived(e, a.toString)) }
+      }
+
+      if (triple._1 == gt.Enabled.withAnnotations(Symbols.event).sVarIdentifier){
+        triple._3.asInstanceOf[SVar[Boolean]].observe{
+          a => {publish(SetEventStatus(!a)); publish(NewSVarValueArrived(e, triple._1, a))} }
+        triple._3.asInstanceOf[SVar[Boolean]].get{
+          a => {publish(SetEventStatus(!a)); publish(NewSVarValueArrived(e, triple._1, a))} }
+      }
+      else if (triple._1 == gt.Application.sVarIdentifier){
+        triple._3.asInstanceOf[SVar[String]].observe{
+          a => {publish(AppNameChanged(a)); publish(NewSVarValueArrived(e, triple._1, a))}  }
+        triple._3.asInstanceOf[SVar[String]].get{
+           a => {publish(AppNameChanged(a)); publish(NewSVarValueArrived(e, triple._1, a))} }
+      } else {
+        triple._3.observe{ a => publish(NewSVarValueArrived(e, triple._1, a)) }
+        triple._3.get{ a => publish(NewSVarValueArrived(e, triple._1, a)) }
+      }
+    }
+  }
 
   private val conf = InternalEditorConfiguration()
 
@@ -58,16 +110,19 @@ class Editor(override val componentName : Symbol)
   }
 
   def removeFromLocalRep(e: Entity) {
-    e.getAllSVars.foreach {
-      //Stop observing
-      x => ignore(x._3)
-    }
+    e.getAllStateParticles.foreach { _._3.ignore() /*Stop observing*/ }
     publish(RemoveEntity(e))
   }
 
   private var gui: Option[EditorPanel] = None
 
-  GeneralEntityDescription.registerCreationObserver(this)
+
+  registerForCreationOf(Nil)
+  addHandler[CreationMessage]{ msg => handleCreation(msg.e, msg.e.description.aspects.map( toTuple ).toMap) }
+  handleRegisteredEntities(Nil){ _.map( e => handleCreation(e, e.description.aspects.map( toTuple ).toMap)) }
+
+  private def toTuple(a : EntityAspect) : (Symbol, NamedSValSet) =
+    a.componentType.value.toSymbol -> a.getCreateParams
 
   override def startUp() {
     gui = Some(new EditorPanel(this))
@@ -80,24 +135,48 @@ class Editor(override val componentName : Symbol)
     //gui.collect({case v => v.closeOperation})
   }
 
-  //React to entity-creations
-  addHandler[EntityConfiguration]{ msg: EntityConfiguration =>
-    //Add the new configuration to the gui
-    publish(EntityConfigurationArrived(msg.e, msg.csets))
+  private var registeredEntities = Set[Entity]()
+  private var requestedEvents = Set[EventDescription]()
 
-    msg.e.getAllSVars.foreach{ triple =>
-      observe(triple._3){ a => publish(NewSVarValueArrived(msg.e, triple._1, a)) }
-      get(triple._3){ a => publish(NewSVarValueArrived(msg.e, triple._1, a)) }
+  def handleEventDesc(desc: EventDescription) {
+    if(!requestedEvents.contains(desc)) {
+      //println("[Editor][info] requesting event " + desc)
+      requestEvent(desc)
+      requestedEvents += desc
+    }
+  }
+
+  override protected def handleEvent(e: Event) {
+    super.handleEvent(e)
+    publish(EventArrived(e))
+  }
+
+  //React to entity-creations
+  def handleCreation(e: Entity, csets: Map[Symbol, NamedSValSet]){
+    e.addRemoveObserver(self)
+    e.get(gt.EventDescription).foreach( handleEventDesc(_) )
+    if(!e.getSVars(gt.EventDescription).isEmpty) return
+    if(configEntity.exists(_ == e)) return
+
+    if (registeredEntities.contains(e))
+      return
+    registeredEntities = registeredEntities + e
+    //Add the new configuration to the gui
+    publish(EntityConfigurationArrived(e, csets))
+
+    e.getAllStateParticles.foreach{ triple =>
       if (triple._1 == Name.sVarIdentifier){
-        observe(triple._3){ a => publish(NewEntityNameArrived(msg.e, a.toString)) }
-        get(triple._3){ a => publish(NewEntityNameArrived(msg.e, a.toString)) }
+        triple._3.observe{ a => publish(NewEntityNameArrived(e, a.toString)) }
+        triple._3.get{ a => publish(NewEntityNameArrived(e, a.toString)) }
       }
+      triple._3.observe{ a => publish(NewSVarValueArrived(e, triple._1, a)) }
+      triple._3.get{ a => publish(NewSVarValueArrived(e, triple._1, a)) }
     }
   }
 
   //Forward events to the editor panel
-  addHandler[scala.swing.event.Event]{ msg: scala.swing.event.Event =>
-    publish(msg)
+  addHandler[scala.swing.event.Event]{
+    msg => publish(msg)
   }
 
   protected def entityConfigComplete(e: Entity, aspect: EntityAspect) {}

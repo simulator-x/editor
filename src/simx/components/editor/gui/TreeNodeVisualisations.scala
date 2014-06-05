@@ -31,8 +31,9 @@ import simx.components.editor.filesystem.ClassFile
 import swing.{GridPanel, Label}
 import java.io.{FileWriter, File}
 import xml.{PrettyPrinter, Elem}
-import simx.core.svaractor.SVarActor
+import simx.core.svaractor.{ImmutableSVar, SVarActor}
 import scala.xml
+import simx.core.entity.description.SVal
 
 /**
  *  Manages the visualisations for sVars and sVals
@@ -78,43 +79,47 @@ class TreeNodeVisualisations(configFile: File, editorActor: SVarActor.Ref) {
       val typeInfo = n.sVar.containedValueManifest
       //Check manifests
       if(debug)
-        if(SVarDescription(Symbol(typeInfo.toString)).head.typeinfo != n.sVar.containedValueManifest) {
+        if(SVarDescription(Symbol(typeInfo.toString())).head.typeTag != n.sVar.containedValueManifest) {
           println("Warning: Manifest difference between " +
-            SVarDescription(Symbol(typeInfo.toString)).head.typeinfo + " and " + n.name.name + "!")
+            SVarDescription(Symbol(typeInfo.toString())).head.typeTag + " and " + n.name.name + "!")
           println("Onto: " +
-            SVarDescription(Symbol(typeInfo.toString)).head.classTag.runtimeClass.getCanonicalName)
+            SVarDescription(Symbol(typeInfo.toString())).head.classTag.runtimeClass.getCanonicalName)
           println("SVar: " +
             n.sVar.containedValueManifest)
         }
 
-      if(!typeViews.contains(Symbol(typeInfo.toString)))
-        typeViews += (Symbol(typeInfo.toString) -> makeSet[DynamicReloader[SVarViewGeneratorBase]])
-      if(!typeSetters.contains(Symbol(typeInfo.toString)))
-        typeSetters += (Symbol(typeInfo.toString) -> makeSet[DynamicReloader[SVarSetterGeneratorBase]])
+      if(!typeViews.contains(Symbol(typeInfo.toString())))
+        typeViews += (Symbol(typeInfo.toString()) -> makeSet[DynamicReloader[SVarViewGeneratorBase]])
+      if(!typeSetters.contains(Symbol(typeInfo.toString())))
+        typeSetters += (Symbol(typeInfo.toString()) -> makeSet[DynamicReloader[SVarSetterGeneratorBase]])
 
       val view = new SVarViewPanel(
         node = n.enSVarValue,
         sVarIdentifier = n.name,
         man = n.sVar.containedValueManifest,
         sVarViews = sVarViews,
-        availableViews = typeViews(Symbol(typeInfo.toString)),
+        availableViews = typeViews(Symbol(typeInfo.toString())),
         editorActor = editorActor,
         sourceDir = sourceDir
       )
 
-      val setter = new SVarSetterPanel(
-        node = n,
-        sVarIdentifier = n.name,
-        man = n.sVar.containedValueManifest,
-        sVarSetters = sVarSetters,
-        availableSetters = typeSetters(Symbol(typeInfo.toString)),
-        editorActor = editorActor,
-        sourceDir = sourceDir
-      )
+      val setter =
+        if(n.sVar.isInstanceOf[ImmutableSVar[_,_]])
+          None
+        else
+          Some(new SVarSetterPanel(
+            node = n,
+            sVarIdentifier = n.name,
+            man = n.sVar.containedValueManifest,
+            sVarSetters = sVarSetters,
+            availableSetters = typeSetters(Symbol(typeInfo.toString())),
+            editorActor = editorActor,
+            sourceDir = sourceDir
+          ))
 
       new DetailsView{
-        val component = new GridPanel(2, 1) {contents += setter.component; contents+= view.component}
-        def update(): Unit = {view.update(); setter.update()}
+        val component = new GridPanel(2, 1) {contents += setter.map(_.component).getOrElse(new Label("SVals can not be altered.")); contents+= view.component}
+        def update(): Unit = {view.update(); setter.collect{case s=> s.update()}}
         val node = n.enSVarValue
       }
     case n: EnSVarValue => simpleLabelView(n, n.value.toString)
@@ -122,31 +127,31 @@ class TreeNodeVisualisations(configFile: File, editorActor: SVarActor.Ref) {
     case n: EnCreateParam =>
       //Check manifests
       if(debug)
-        if(SVarDescription(Symbol(n.cp.typedSemantics.typeinfo.toString)).head.typeinfo !=
+        if(SVarDescription(Symbol(n.cp.typedSemantics.typeTag.toString())).head.typeTag !=
           n.cp.containedValueManifest)
         {
           println("Warning: Manifest difference between " +
-            SVarDescription(Symbol(n.cp.typedSemantics.typeinfo.toString)).head.sVarIdentifier + " and " +
-            n.cp.typedSemantics.asConvertibleTrait.sVarIdentifier.name + "!")
-          println("Onto: " + SVarDescription(Symbol(n.cp.typedSemantics.asConvertibleTrait.typeinfo.toString)).
+            SVarDescription(Symbol(n.cp.typedSemantics.typeTag.toString())).head.sVarIdentifier + " and " +
+            n.cp.typedSemantics.sVarIdentifier.name + "!")
+          println("Onto: " + SVarDescription(Symbol(n.cp.typedSemantics.typeTag.toString())).
             head.classTag.runtimeClass.getCanonicalName)
           println("SVar: " + n.cp.containedValueManifest.runtimeClass.getCanonicalName)
         }
 
-      if(!typeViews.contains(Symbol(n.cp.typedSemantics.typeinfo.toString)))
-        typeViews += (Symbol(n.cp.typedSemantics.typeinfo.toString)
+      if(!typeViews.contains(Symbol(n.cp.typedSemantics.typeTag.toString())))
+        typeViews += (Symbol(n.cp.typedSemantics.typeTag.toString())
           -> makeSet[DynamicReloader[SVarViewGeneratorBase]])
 
       new SVarViewPanel(
         node = n.enCreateParamValue,
-        sVarIdentifier = n.cp.typedSemantics.asConvertibleTrait.sVarIdentifier,
-        man = n.cp.typedSemantics.typeinfo,
+        sVarIdentifier = n.cp.typedSemantics.sVarIdentifier,
+        man = n.cp.typedSemantics.classTag,
         sVarViews = sVarViews,
-        availableViews = typeViews(Symbol(n.cp.typedSemantics.typeinfo.toString)),
+        availableViews = typeViews(Symbol(n.cp.typedSemantics.typeTag.toString())),
         editorActor = editorActor,
         sourceDir = sourceDir
       )
-    case n: EnCreateParamValue => simpleLabelView(n, n.toString)
+    case n: EnCreateParamValue => simpleLabelView(n, n.toString())
     case n => simpleLabelView(n, "Unknown")
   }
 
@@ -257,7 +262,7 @@ class TreeNodeVisualisations(configFile: File, editorActor: SVarActor.Ref) {
     val fw = new FileWriter(configFile)
     //The conversion to String and back is a quick and dirty way to deal with the "null"s in the
     //above Elem constructors, that lead to a NullPointerException in the PrettyPrinter
-    // but not in the toString method of Node
+    // but not in the toString() method of Node
     fw.write(new PrettyPrinter(1000,2).format(scala.xml.XML.loadString(xmlRoot.toString())))
     fw.close()
   }

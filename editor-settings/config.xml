@@ -26,6 +26,18 @@
       </SVarViews>
     </TypedSvarView>
     <TypedSvarView>
+      <typeInfo>java.awt.image.BufferedImage</typeInfo>
+      <SVarViews>
+        <SVarView>
+          <fileName>src/BufferedImageSVarViewGeneratorf8550edb70414ae285ce22feb791b03a.scala</fileName>
+          <className>simx.components.editor.gui.BufferedImageSVarViewGeneratorf8550edb70414ae285ce22feb791b03a</className>
+          <usedForSVars>
+            <sVarIdentifier>Image</sVarIdentifier>
+          </usedForSVars>
+        </SVarView>
+      </SVarViews>
+    </TypedSvarView>
+    <TypedSvarView>
       <typeInfo>scala.collection.immutable.Map$EmptyMap$</typeInfo>
       <SVarViews>
         <SVarView>
@@ -120,6 +132,28 @@
   </TypedSvarViews>
   <TypedSvarSetters>
     <TypedSvarSetter>
+      <typeInfo>Boolean</typeInfo>
+      <SVarSetters>
+        <SVarSetter>
+          <fileName>src/BooleanSVarSetterGenerator945337032d9a4019b6be3a8387fd15bd.scala</fileName>
+          <className>simx.components.editor.gui.BooleanSVarSetterGenerator945337032d9a4019b6be3a8387fd15bd</className>
+          <usedForSVars>
+            <sVarIdentifier>Enabled</sVarIdentifier>
+          </usedForSVars>
+        </SVarSetter>
+      </SVarSetters>
+    </TypedSvarSetter>
+    <TypedSvarSetter>
+      <typeInfo>Float</typeInfo>
+      <SVarSetters>
+        <SVarSetter>
+          <fileName>src/FloatSVarSetterGenerator5ebf46f01bd845d3a30c1c454fe4a0bc.scala</fileName>
+          <className>simx.components.editor.gui.FloatSVarSetterGenerator5ebf46f01bd845d3a30c1c454fe4a0bc</className>
+          <usedForSVars/>
+        </SVarSetter>
+      </SVarSetters>
+    </TypedSvarSetter>
+    <TypedSvarSetter>
       <typeInfo>java.awt.Color</typeInfo>
       <SVarSetters>
         <SVarSetter>
@@ -140,6 +174,16 @@
           <usedForSVars>
             <sVarIdentifier>Font</sVarIdentifier>
           </usedForSVars>
+        </SVarSetter>
+      </SVarSetters>
+    </TypedSvarSetter>
+    <TypedSvarSetter>
+      <typeInfo>java.io.File</typeInfo>
+      <SVarSetters>
+        <SVarSetter>
+          <fileName>src/FileSVarSetterGenerator88daf25e7d584926a79f97858bd30802.scala</fileName>
+          <className>simx.components.editor.gui.FileSVarSetterGenerator88daf25e7d584926a79f97858bd30802</className>
+          <usedForSVars/>
         </SVarSetter>
       </SVarSetters>
     </TypedSvarSetter>

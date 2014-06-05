@@ -34,7 +34,7 @@ import io.Source
 
 object SimXProperties {
 
-  checkHome("simx.home", "")((simXHome) => {
+  checkHome("simx.home")((simXHome) => {
     new File(simXHome, "core").exists() && new File(simXHome, "components").exists()
   })
 
@@ -142,21 +142,24 @@ object SimXProperties {
     (System.getProperty("os.name").toLowerCase.indexOf("nix") >= 0) ||
     (System.getProperty("os.name").toLowerCase.indexOf("nux") >= 0)
 
-  private def checkHome(sysPropName: String, simXAppHomePath: String)(additionalCheck: (File) => Boolean = (f) => true)
+  private def checkHome(sysPropName: String)(additionalCheck: (File) => Boolean = (f) => true)
   {
     if(System.getProperty(sysPropName, "") == "") {
       val wd = new File(new File("").getAbsolutePath)
-      //Assuming SimX-Application structure (like in simx-production.git)
-      val home = new File(wd.getParentFile.getParentFile, simXAppHomePath)
-      if(home.exists() && additionalCheck(home))
-        System.setProperty(sysPropName, home.getAbsolutePath)
-      else
-        throw
-          new java.lang.Exception(
-            "Could not find " + sysPropName + ". Tried " +
-            home.getAbsolutePath +
-            ". Please set the system property \"" + sysPropName + "\" correctly."
-          )
+      //Search for SimX home in the parent directories
+      var home = wd
+      1 to 10 foreach{ _ =>
+        home = home.getParentFile
+        if(home.exists() && additionalCheck(home)) {
+          System.setProperty(sysPropName, home.getAbsolutePath)
+          return
+        }
+      }
+      throw new java.lang.Exception(
+        "Could not find " + sysPropName + ". Tried " +
+        home.getAbsolutePath +
+        ". Please set the system property \"" + sysPropName + "\" correctly."
+      )
     }
   }
 

@@ -30,6 +30,8 @@ import simx.components.editor.filesystem.SimXProperties
 import scala.swing.ListView.Renderer
 import scala.swing.event.MousePressed
 import java.io.File
+import simx.core.worldinterface.eventhandling.Event
+import simx.core.ontology.types
 
 /**
 * User: Martin Fischbach
@@ -69,9 +71,33 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
             case node: EnCreateParamSet =>
               new Label(node.component.name) {icon = aspectIcon; xAlignment = Alignment.Left}
             case node: EnCreateParam =>
-              new Label(node.cp.typedSemantics.asConvertibleTrait.sVarIdentifier.name) {
+              new Label(node.cp.typedSemantics.sVarIdentifier.name) {
                 icon = createParamIcon; xAlignment = Alignment.Left}
             case node: EnCreateParamValue => new Label(node.toString) {xAlignment = Alignment.Left}
+            case _ => new Label("Unknown") {xAlignment = Alignment.Left}
+          }
+        if(selectedPath.contains(a)) {
+          comp.opaque = true
+          comp.background = Color.lightGray
+        }
+        comp.font = comp.font.deriveFont(18.0f)
+        comp
+      }
+    }
+  }
+
+  private val eventList = new ListView[Event]() {
+
+    private val entityIcon = new ImageIcon(SimXProperties.editorSettingsRoot.getAbsolutePath + "/icons/event.jpg")
+
+    renderer = new Renderer[Event] {
+      def componentFor(list: ListView[_], isSelected: Boolean, focused: Boolean, a: Event, index: Int) = {
+        val comp =
+          a match {
+            case e: Event =>
+              new Label(e.name.value.toSymbol.name + " (" + e.values.firstValueFor(types.Time) + ")") {
+                icon = entityIcon; xAlignment = Alignment.Left
+              }
             case _ => new Label("Unknown") {xAlignment = Alignment.Left}
           }
         if(selectedPath.contains(a)) {
@@ -96,25 +122,46 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
     }
   )
 
+  private val eventListSB = new ScrollPane(eventList)
+
   title = "SimX Editor"
-  contents = new GridPanel(1, 2) {
-    contents += new ScrollPane(list)
+  contents = new GridPanel(1, 3) {
+    contents += eventListSB
     contents += details
+    contents += new ScrollPane(list)
     border = Swing.EmptyBorder(10, 10, 10, 10)
   }
 
+  listenTo(eventList.mouse.clicks)
   listenTo(list.mouse.clicks)
   listenTo(editorComponentActor)
 
   addSynchronizedReaction {
-    case msg: AppNameChanged => {
+    case msg: AppNameChanged =>
       treeRoot.appName = msg.name
       list.repaint()
-    }
+  }
+
+  private var eventsDisabled = false
+
+  addSynchronizedReaction {
+    case msg: EventArrived =>
+      if(!eventsDisabled) {
+        eventList.listData +:= msg.e
+        if(eventList.listData.size > 100)
+          eventList.listData = eventList.listData.dropRight(50)
+      }
   }
 
   addSynchronizedReaction {
-    case msg: NewSVarValueArrived => {
+    case msg: SetEventStatus =>
+      eventsDisabled = msg.disabled
+      if(eventsDisabled) eventListSB.contents = new Label("Events disabled")
+      else eventListSB.contents = eventList
+  }
+
+  addSynchronizedReaction {
+    case msg: NewSVarValueArrived =>
       sVarToNode.get((msg.e, msg.sVarName)).collect({ case node =>
         val repaint: Boolean = node.parent.exists(n => selectedPath.contains(n))
         node.value = msg.value
@@ -122,26 +169,22 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
         if(node == details.detailsView.node) details.detailsView.update()
         displayedNodes.get(node).collect{case i => i._2.update()}
       })
-    }
   }
 
   addSynchronizedReaction {
-    case msg: NewEntityNameArrived => {
-      treeRoot.children.find((tn) => {
-        tn match {
-          case node: EnEntity => node.e == msg.e
-          case _ => false
-        }
-      }).collect{
+    case msg: NewEntityNameArrived =>
+      treeRoot.children.find {
+        case node: EnEntity => node.e == msg.e
+        case _ => false
+      }.collect{
         case node: EnEntity =>
           node.name = msg.name
           list.repaint()
       }
-    }
   }
 
   addSynchronizedReaction {
-    case msg: EntityConfigurationArrived => {
+    case msg: EntityConfigurationArrived =>
       //Add the new configuration to the tree
       val eNode = new EnEntity(msg.e, Option(treeRoot))
       msg.csets.foreach( (symbolCSetTuple) => {
@@ -152,23 +195,20 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
         })
       })
       val svarCollNode = new EnSVarCollection(Option(eNode))
-      msg.e.getAllSVars.foreach{
-        x => sVarToNode += (msg.e, x._1) -> new EnSVarValue( Some( EnSVar( x._3, x._1, Some( svarCollNode ) ) ) )
+      msg.e.sVars.flatMap(t => t._2.map(t._1 -> _.svar)).foreach{
+        case x => sVarToNode += (msg.e, x._1) -> new EnSVarValue( Some( EnSVar( x._2, x._1, Some( svarCollNode ) ) ) )
       }
 
       //Update the view
       show()
-    }
   }
 
   addSynchronizedReaction {
-    case msg: RemoveEntity => {
-      treeRoot.children.find((tn) => {
-        tn match {
-          case node: EnEntity => node.e == msg.e
-          case _ => false
-        }
-      }).collect {
+    case msg: RemoveEntity =>
+      treeRoot.children.find {
+        case node: EnEntity => node.e == msg.e
+        case _ => false
+      }.collect {
         case node: EnEntity =>
           treeRoot.children = treeRoot.children.filterNot(_ == node)
           if(selectedPath.contains(node)) selectedPath = treeRoot.getPath
@@ -176,7 +216,6 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
           val dn = displayedNodes.values
           dn.foreach(i => if(i._2.node.getPath.contains(node)) {i._1.closeOperation(); i._1.dispose()})
       }
-    }
   }
 
   size = new Dimension(1067, 600)
@@ -184,33 +223,40 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
   visible = true
 
   reactions += {
-    case e: MousePressed => {
+    case e: MousePressed if e.source == list =>
       val selection =
         if(selectedPath.contains(list.selection.items.head)) list.selection.items.head.parent.getOrElse(treeRoot)
         else list.selection.items.head
-        if(!selection.isInstanceOf[EnSVar]){
-          selectedPath = selection.getPath
-          show(selection)
-          details.detailsView = visualisations.detailsViewFor(selection)
-          details.detailsView.update()
-        } else {
-          val dv = visualisations.detailsViewFor(selection)
-          val f = new Frame() {
-            override def closeOperation() {
-              super.closeOperation()
-              displayedNodes -= dv.node
-            }
-            title = selection.getPath.filterNot(n => n.isInstanceOf[EnSVarCollection] || n.isInstanceOf[EnRoot]).
-              map(_.toString).mkString(" > ")
-            contents = new DetailsViewScrollPane(dv)
-            size = new Dimension(thisEditorPanel.size.width/2, thisEditorPanel.size.height)
-            minimumSize = new Dimension(thisEditorPanel.minimumSize.width/2, thisEditorPanel.minimumSize.height)
-            visible = true
+      if(!selection.isInstanceOf[EnSVar]){
+        selectedPath = selection.getPath
+        show(selection)
+        details.detailsView = visualisations.detailsViewFor(selection)
+        details.detailsView.update()
+      } else {
+        val dv = visualisations.detailsViewFor(selection)
+        val f = new Frame() {
+          override def closeOperation() {
+            super.closeOperation()
+            displayedNodes -= dv.node
           }
-          displayedNodes = displayedNodes.updated(dv.node, (f, dv))
-          dv.update()
+          title = selection.getPath.filterNot(n => n.isInstanceOf[EnSVarCollection] || n.isInstanceOf[EnRoot]).
+            map(_.toString).mkString(" > ")
+          contents = new DetailsViewScrollPane(dv)
+          size = new Dimension(thisEditorPanel.size.width/2, thisEditorPanel.size.height)
+          minimumSize = new Dimension(thisEditorPanel.minimumSize.width/2, thisEditorPanel.minimumSize.height)
+          visible = true
         }
-    }
+        displayedNodes = displayedNodes.updated(dv.node, (f, dv))
+        dv.update()
+      }
+    case e: MousePressed if e.source == eventList =>
+      val item = eventList.selection.items.head
+      details.detailsView =
+        new DetailsView {
+          val component = new Label(item.toString)
+          def update() = {}
+          val node = null
+        }
   }
 
   //TODO Shutdown properly (no Sys.exit(0))

@@ -23,6 +23,7 @@ package simx.components.editor
 import simx.core.entity.description.NamedSValSet
 import simx.core.entity.Entity
 import simx.core.svaractor.SVarActor
+import simx.core.worldinterface.eventhandling.Event
 
 /**
  * User: Martin Fischbach
@@ -37,4 +38,6 @@ private[editor] case class AppNameChanged(name: String) extends scala.swing.even
 private[editor] case class AvailableViewsChanged() extends scala.swing.event.Event
 private[editor] case class UpdateSVarDetailsView() extends scala.swing.event.Event
 private[editor] case class RemoveEntity(e : Entity) extends scala.swing.event.Event
+private[editor] case class EventArrived(e : Event) extends scala.swing.event.Event
+private[editor] case class SetEventStatus(disabled: Boolean) extends scala.swing.event.Event
 /*SCALA SWING EVENTS END*/

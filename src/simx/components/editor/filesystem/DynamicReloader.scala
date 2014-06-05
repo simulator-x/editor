@@ -29,6 +29,7 @@ import java.io.{FileWriter, File}
 import simx.core.helper.Loggable
 import scala.tools.nsc.{Settings, Global}
 import java.lang.management.ManagementFactory
+import java.awt.Desktop
 
 case class ClassFile(file: File, className: String)
 case class CompilerSettings(outputPath: File, additionalClassPaths: List[File], additionalSourceFiles: List[File] = Nil)
@@ -52,7 +53,7 @@ object DynamicReloader {
   //TODO: Access via an management actor (like the simx.components.renderer.jvr.ResourceManager)
   private var compileEnvironments = Map[CompilerSettings, Global]()
   private[filesystem] def compileEnvironmentFor(cs: CompilerSettings) = {
-    if(!compileEnvironments.contains(cs)) {
+    //if(!compileEnvironments.contains(cs)) {
       val classpath = cs.additionalClassPaths.mkString(SimXProperties.pathSeparator)
       val settings = new Settings()
       settings.deprecation.value = true // enable detailed deprecation warnings
@@ -60,9 +61,10 @@ object DynamicReloader {
       settings.outputDirs.setSingleOutput(cs.outputPath.getCanonicalPath)
       settings.usejavacp.value = true
       settings.classpath.value = classpath
-      compileEnvironments += cs -> new Global(settings)
-    }
-    compileEnvironments(cs)
+      //compileEnvironments += cs -> new Global(settings)
+    //}
+    //compileEnvironments(cs)
+    new Global(settings)
   }
 }
 
@@ -132,9 +134,26 @@ class DynamicReloader[T] (
   }
 
   def showInIDE() {
-    val cmd: List[String] = SimXProperties.scalaEditor :: classFile.file.getCanonicalPath :: Nil
-    val child = Runtime.getRuntime.exec(cmd.toArray)
-    child.waitFor
+    if (Desktop.isDesktopSupported) {
+      try{
+        Desktop.getDesktop.open(classFile.file)
+      }catch{
+        case e: java.io.IOException =>
+          val extension = classFile.file.getName.split('.').toList.tail.headOption.getOrElse("scala")
+          println("[error][DynamicReloader] Could not open file for editing.")
+          println("\tMake sure you have a default program set to open ." + extension+ " files with.")
+      }
+    }
+    else {
+      println("[error][DynamicReloader] Could not open the following file for editing:")
+      println("\tclassFile.file.getAbsolutePath")
+    }
+    //Windows alternative
+    //Runtime.getRuntime.exec("rundll32 SHELL32.DLL,ShellExec_RunDLL "+ classFile.file.getCanonicalPath)
+    //Old Impl
+    //val cmd: List[String] = SimXProperties.scalaEditor :: classFile.file.getCanonicalPath :: Nil
+    //val child = Runtime.getRuntime.exec(cmd.toArray)
+    //child.waitFor
   }
 
   def emit(s: String) { if(DynamicReloader.emitToLog) info(s) else println(s) }
