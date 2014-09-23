@@ -27,9 +27,10 @@
  */
 package simx.components.editor.gui
 
+import simx.core.entity.typeconversion.TypeInfo._
+
 import swing.Component
 import simx.core.svaractor.{StateParticle, SVarActor, SVar}
-import scala.reflect.runtime.universe.TypeTag
 
 /**
  *  Holds information about SVarViewException exceptions
@@ -47,7 +48,7 @@ abstract class SVarSetterBase {
   def internalUpdate(sVarValue: Any)
 }
 
-abstract class SVarSetter[T : TypeTag] extends SVarSetterBase {
+abstract class SVarSetter[T : DataTag] extends SVarSetterBase {
   case class Value[U](v : U)
   case class HandleValue[U](handler : U => Unit)
   private var setter: Option[StateParticle[T]] = None

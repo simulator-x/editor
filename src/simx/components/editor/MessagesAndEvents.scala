@@ -22,7 +22,8 @@ package simx.components.editor
 
 import simx.core.entity.description.NamedSValSet
 import simx.core.entity.Entity
-import simx.core.svaractor.SVarActor
+import simx.core.svaractor.unifiedaccess.StateParticleInfo
+import simx.core.svaractor.{StateParticle, SVarActor}
 import simx.core.worldinterface.eventhandling.Event
 
 /**
@@ -32,7 +33,9 @@ import simx.core.worldinterface.eventhandling.Event
 
 /*SCALA SWING EVENTS*/
 private[editor] case class EntityConfigurationArrived(e : Entity, csets : Map[Symbol, NamedSValSet]) extends scala.swing.event.Event
-private[editor] case class NewSVarValueArrived(e : Entity, sVarName : Symbol, value: Any) extends scala.swing.event.Event
+private[editor] case class RemoveSVarFromEntity(e : Entity, sVarName : Symbol) extends scala.swing.event.Event
+private[editor] case class NewSVarValueArrived(e : Entity, sVarName : Symbol, sParInfo : StateParticleInfo[_], value: Any) extends scala.swing.event.Event
+private[editor] case class UpdateSVarOfEntity(e : Entity, sVarName : Symbol, sParInfo : StateParticleInfo[_], value: Any) extends scala.swing.event.Event //HacK - stateParticle Access
 private[editor] case class NewEntityNameArrived(e : Entity, name: String) extends scala.swing.event.Event
 private[editor] case class AppNameChanged(name: String) extends scala.swing.event.Event
 private[editor] case class AvailableViewsChanged() extends scala.swing.event.Event

@@ -27,10 +27,14 @@ package simx.components.editor.gui
 import simx.core.entity.Entity
 
 import java.util.UUID
+import simx.core.ontology._
 import simx.core.svaractor.StateParticle
 import simx.core.entity.description.{NamedSValSet, SVal}
+import simx.core.svaractor.unifiedaccess.StateParticleInfo
 
 abstract class TreeNode() {
+  def label: String
+  def hierarchicalOrder: Int
   def children: Seq[TreeNode]
   def children_=(value: Seq[TreeNode])
   def parent: Option[TreeNode]
@@ -43,6 +47,18 @@ abstract class TreeNode() {
 
   def getPathToParent: List[TreeNode] = {
     getPath.dropRight(1)
+  }
+
+  protected def getAnnotationsLabelAndTypeInfoLabel(annotations : Set[Annotation], sVarIdentifier : Symbol) : String = {
+    val sb  = new java.lang.StringBuilder()
+    sb.append(" : " + sVarIdentifier.name)
+    if (annotations.nonEmpty) {
+      sb.append(" <")
+      sb.append(annotations.head.value)
+      annotations.tail.foreach(a => sb.append(", " + a.value) )
+      sb.append(">")
+    }
+    sb.toString
   }
 
   private val id = UUID.randomUUID
@@ -82,43 +98,101 @@ abstract class TreeNode() {
 }
 
 abstract class TreeNodeWithValue extends TreeNode {
-  def value: Any
+  var value: Any
+}
+
+abstract class EnSVarBaseNode extends TreeNode {
+  def sParInf : StateParticleInfo[_]
+
+  private val _sVar = sParInf.svar
+  def sVar: StateParticle[_] = _sVar
+ //def sVar_= (value:StateParticle[_]) : Unit = _sVar = value
+  def name: Symbol
+  def isSVal : Boolean
 }
 
 case class EnRoot private(var appName: String, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
   extends TreeNode {
     def this(appName: String, children: TreeNode*) = this(appName, None, children.toSeq)
     override def toString = appName
+    override def label = toString
+    override def hierarchicalOrder = 0
 }
 case class EnEntity(e: Entity, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil) extends TreeNode {
   var name: String = e.id.toString
   override def toString = "Entity[" + name + "]"
+  override def label = {
+    if(e.getSimpleName == "unnamed-entity") e.getSimpleName+" ["+name+"]"
+    else e.getSimpleName + getAnnotationsLabelAndTypeInfoLabel(
+      e.description.typeDef.annotations, e.description.typeDef.sVarIdentifier )
+  }
+  override def hierarchicalOrder = 1
 }
 
 case class EnSVarCollection(parent: Option[TreeNode], var children: Seq[TreeNode] = Nil) extends TreeNode {
   override def toString = "SVars"
+  override def label = toString
+  override def hierarchicalOrder = 5
 }
 
-case class EnSVar(sVar: StateParticle[_], name: Symbol, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
-  extends TreeNode {
+case class EnSVar(sParInf: StateParticleInfo[_], name: Symbol, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
+  extends EnSVarBaseNode {
   def enSVarValue = children.head.asInstanceOf[EnSVarValue]
-
+  def isSVal = enSVarValue.isSVal
+  def label : String =
+    name.name + getAnnotationsLabelAndTypeInfoLabel(sParInf.annotations, sParInf.typeInfo.sVarIdentifier )
+  def hierarchicalOrder = 8
   override def toString = "SVar[" + name.name + "]"
 }
 
-case class EnSVarValue(var value: Any, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
+case class EnSVarRelation(sParInf: StateParticleInfo[_], name: Symbol,  parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
+  extends EnSVarBaseNode {
+
+//  def enSVarRelValue = children.head.asInstanceOf[EnSVarRelationValue]
+  def isSVal = children.head.asInstanceOf[EnSVarValue].isSVal
+  override def toString = "SVarRel[" + name.name + "]"
+  def label = name.name
+  def hierarchicalOrder = 6
+}
+
+case class EnSVarValue(var value: Any, isSVal : Boolean, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
   extends TreeNodeWithValue {
-    def this(parent: Option[TreeNode], children: TreeNode*) = this("Not initialized", parent, children.toSeq)
+    def this(isSVal : Boolean, parent: Option[TreeNode], children: TreeNode*) = this("Not initialized", isSVal, parent, children.toSeq)
+  override def label = value.toString
+  override def hierarchicalOrder = 9
+}
+
+case class EnSVarRelationValue(var value: Any, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
+  extends TreeNodeWithValue {
+  def this(parent: Option[TreeNode], children: TreeNode*) = this("Not initialized", parent, children.toSeq)
+  override def toString : String = {
+    value match {
+      case e: Entity => e.getSimpleName
+      case _ => "Not initialized"
+    }
+  }
+  override def label = toString
+  override def hierarchicalOrder = 7
 }
 
 case class EnCreateParamSet(
-  component: Symbol, cps: NamedSValSet, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil) extends TreeNode
+  component: Symbol, cps: NamedSValSet, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil) extends TreeNode {
+  override def label = component.name
+  override def hierarchicalOrder = 2
+}
 
-case class EnCreateParam(cp: SVal[_], parent: Option[TreeNode], var children: Seq[TreeNode] = Nil) extends TreeNode {
+
+case class EnCreateParam(cp: SVal.SValType[_], parent: Option[TreeNode], var children: Seq[TreeNode] = Nil) extends TreeNode {
   def enCreateParamValue = children.head.asInstanceOf[EnCreateParamValue]
+  override def label = cp.typedSemantics.sVarIdentifier.name
+  override def hierarchicalOrder = 3
 }
 
-case class EnCreateParamValue(value: Any, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
+case class EnCreateParamValue(newvalue: Any, parent: Option[TreeNode], var children: Seq[TreeNode] = Nil)
   extends TreeNodeWithValue {
-    override def toString : String = value.toString
+    override def toString : String = newvalue.toString
+    override var value: Any = newvalue
+    override def label = toString
+  override def hierarchicalOrder = 4
 }
+

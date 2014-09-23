@@ -24,7 +24,8 @@
  */
 package simx.components.editor.filesystem
 
-import tools.nsc.util.ScalaClassLoader.URLClassLoader
+//import tools.nsc.util.ScalaClassLoader.URLClassLoader
+import scala.reflect.internal.util.ScalaClassLoader.URLClassLoader
 import java.io.{FileWriter, File}
 import simx.core.helper.Loggable
 import scala.tools.nsc.{Settings, Global}
@@ -99,7 +100,7 @@ class DynamicReloader[T] (
     fileMonitor.addFile(classFile.file)
     fileMonitor.addListener(new FileListener{
       def fileChanged(p1: File) {
-        emit("File " + p1.getName + " changed. Recompiling and loading ..." )
+        emitln("File " + p1.getName + " changed. Recompiling and loading ..." )
         load().collect{
           case clazz =>
             currentClass = Some(clazz)
@@ -107,30 +108,62 @@ class DynamicReloader[T] (
         }
       }
     })
-
-    emit("Initially compiling and loading '" + classFile.file.getName + "'..." )
     currentClass = load()
     onLoad(currentClass)
   }
 
   private def load(): Option[T] =  {
+    compile()
 
-    val env = DynamicReloader.compileEnvironmentFor(compilerSettings)
-    new env.Run().compile(classFile.file.getCanonicalPath :: Nil)
-
+    emit("Loading " + classFile.file.getName + "'... " )
     val byteCodeDirectory = new File(compilerSettings.outputPath.getCanonicalPath).toURI.toURL
     val classLoader = new URLClassLoader(Array(byteCodeDirectory), this.getClass.getClassLoader)
 
     try {
       val clazz = classLoader.loadClass( classFile.className )
       val loadedObject: T = clazz.asInstanceOf[Class[T]].newInstance
-      emit("successful.")
+      emitln("successful.")
       Some(loadedObject)
     } catch {
       case e : Throwable =>
-        emit("Error: \n" + e)
+        emitln("Error: \n" + e)
         None
     }
+  }
+
+  //checks if the <classFile.file> file needs to be recompiled
+  private def compile() {
+
+    //get the path of classfiles
+    (io.Source.fromFile(classFile.file).getLines.find{line => line.startsWith("package ")}    ) match {
+      case Some(line) =>
+        val sb = new StringBuilder
+        sb.append(compilerSettings.outputPath.getCanonicalPath + File.separator)
+        val packageName = line.split(' ').reverse.head.split('.')
+        sb.append(packageName.head)
+        packageName.tail.foreach{
+          dir => sb.append(File.separator + dir)
+        }
+
+        //get the class file
+        val compiledClassFile = new File(sb.toString, classFile.file.getName.split('.').init :+ "class" mkString ".")
+
+        //recompile whether no class filer exists or it's not up-to-date.
+        if(!compiledClassFile.exists() || compiledClassFile.lastModified() < classFile.file.lastModified()) {
+          if(!compiledClassFile.exists()) emitln("Initially compiling: " + classFile.file.getName + "'... ")
+          else emit("Recompiling: " + classFile.file.getName + "'... ")
+
+          //Todo compiling deprecated use SBT?
+          val env = DynamicReloader.compileEnvironmentFor(compilerSettings)
+          new env.Run().compile(classFile.file.getCanonicalPath :: Nil)
+          emitln("done")
+        }
+        else emitln("Skip compiling: no changes in " +classFile.file.getName)
+      case None => println("[error][DynamicReloader] No package path found in .scala file: " + classFile.file.getName )
+      }
+
+
+
   }
 
   def showInIDE() {
@@ -156,7 +189,8 @@ class DynamicReloader[T] (
     //child.waitFor
   }
 
-  def emit(s: String) { if(DynamicReloader.emitToLog) info(s) else println(s) }
+  def emitln(s: String) { if(DynamicReloader.emitToLog) info(s) else println(s) }
+  def emit(s: String) { if(DynamicReloader.emitToLog) info(s) else print(s) }
 
   override def toString: String = {
     getCurrentClass match {

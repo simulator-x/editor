@@ -21,6 +21,8 @@
 package simx.components.editor
 
 import simx.core.helper.SVarUpdateFunctionMap
+import simx.core.svaractor.unifiedaccess.{StateParticleInfo, ObservableAccessSet, Relation}
+import scala.collection.mutable
 import swing.Publisher
 import simx.core.component.Component
 import gui._
@@ -31,7 +33,7 @@ import simx.core.entity.Entity
 import simx.core.entity.component.ComponentAspect
 import simx.core.worldinterface.CreationMessage
 import simx.core.worldinterface.eventhandling.{Event, EventHandler, EventDescription}
-import simx.core.svaractor.SVar
+import simx.core.svaractor.{StateParticle, SVar}
 
 //Global Types
 import simx.core.ontology.{types => gt, Symbols}
@@ -59,6 +61,8 @@ class Editor(override val componentName : Symbol)
         extends Component(componentName, Symbols.editor) with SVarUpdateFunctionMap with Publisher with EventHandler {
 
   private var configAspect: Option[EntityAspect] = None
+  private val entityKnownSVarsMap : mutable.Map[Entity, Map[Symbol, StateParticleInfo[_]]] =
+    mutable.Map[Entity, Map[Symbol, StateParticleInfo[_]]] ()
 
   protected def requestInitialConfigValues(toProvide: Set[ConvertibleTrait[_]], aspect: EntityAspect, e: Entity) = {
     configAspect = Some(aspect)
@@ -72,25 +76,25 @@ class Editor(override val componentName : Symbol)
     configAspect.collect{case ca => publish(EntityConfigurationArrived(e, Map(toTuple(ca))))}
 
     e.getAllStateParticles.foreach{ triple =>
-      if (triple._1 == Name.sVarIdentifier){
-        triple._3.observe{ a => publish(NewEntityNameArrived(e, a.toString)) }
-        triple._3.get{ a => publish(NewEntityNameArrived(e, a.toString)) }
+      if (triple.identifier == Name.sVarIdentifier){
+        triple.svar.observe{ a => publish(NewEntityNameArrived(e, a.toString)) }
+        triple.svar.get{ a => publish(NewEntityNameArrived(e, a.toString)) }
       }
 
-      if (triple._1 == gt.Enabled.withAnnotations(Symbols.event).sVarIdentifier){
-        triple._3.asInstanceOf[SVar[Boolean]].observe{
-          a => {publish(SetEventStatus(!a)); publish(NewSVarValueArrived(e, triple._1, a))} }
-        triple._3.asInstanceOf[SVar[Boolean]].get{
-          a => {publish(SetEventStatus(!a)); publish(NewSVarValueArrived(e, triple._1, a))} }
+      if (triple.identifier == gt.Enabled.withAnnotations(Symbols.event).sVarIdentifier){
+        triple.svar.asInstanceOf[SVar[Boolean]].observe{
+          a => {publish(SetEventStatus(!a)); publish(NewSVarValueArrived(e, triple.identifier, triple , a))} }
+        triple.svar.asInstanceOf[SVar[Boolean]].get{
+          a => {publish(SetEventStatus(!a)); publish(NewSVarValueArrived(e, triple.identifier, triple,  a))} }
       }
-      else if (triple._1 == gt.Application.sVarIdentifier){
-        triple._3.asInstanceOf[SVar[String]].observe{
-          a => {publish(AppNameChanged(a)); publish(NewSVarValueArrived(e, triple._1, a))}  }
-        triple._3.asInstanceOf[SVar[String]].get{
-           a => {publish(AppNameChanged(a)); publish(NewSVarValueArrived(e, triple._1, a))} }
+      else if (triple.identifier == gt.Application.sVarIdentifier){
+        triple.svar.asInstanceOf[SVar[String]].observe{
+          a => {publish(AppNameChanged(a)); publish(NewSVarValueArrived(e, triple.identifier, triple,  a))}  }
+        triple.svar.asInstanceOf[SVar[String]].get{
+           a => {publish(AppNameChanged(a)); publish(NewSVarValueArrived(e, triple.identifier, triple, a))} }
       } else {
-        triple._3.observe{ a => publish(NewSVarValueArrived(e, triple._1, a)) }
-        triple._3.get{ a => publish(NewSVarValueArrived(e, triple._1, a)) }
+        triple.svar.observe{ a => publish(NewSVarValueArrived(e, triple.identifier, triple,  a)) }
+        triple.svar.get{ a => publish(NewSVarValueArrived(e, triple.identifier, triple, a)) }
       }
     }
   }
@@ -110,7 +114,14 @@ class Editor(override val componentName : Symbol)
   }
 
   def removeFromLocalRep(e: Entity) {
-    e.getAllStateParticles.foreach { _._3.ignore() /*Stop observing*/ }
+    e.getAllStateParticles.foreach { _.svar.ignore() /*Stop observing*/ }
+
+    // cleanup local refs
+    println("remove entity " + e.toString)
+    registeredEntities = registeredEntities - e
+    entityKnownSVarsMap - e
+
+    //update view
     publish(RemoveEntity(e))
   }
 
@@ -153,7 +164,7 @@ class Editor(override val componentName : Symbol)
 
   //React to entity-creations
   def handleCreation(e: Entity, csets: Map[Symbol, NamedSValSet]){
-    e.addRemoveObserver(self)
+    e.addRemoveObserver(self)()
     e.get(gt.EventDescription).foreach( handleEventDesc(_) )
     if(!e.getSVars(gt.EventDescription).isEmpty) return
     if(configEntity.exists(_ == e)) return
@@ -164,13 +175,73 @@ class Editor(override val componentName : Symbol)
     //Add the new configuration to the gui
     publish(EntityConfigurationArrived(e, csets))
 
+    //register all new SVars
     e.getAllStateParticles.foreach{ triple =>
-      if (triple._1 == Name.sVarIdentifier){
-        triple._3.observe{ a => publish(NewEntityNameArrived(e, a.toString)) }
-        triple._3.get{ a => publish(NewEntityNameArrived(e, a.toString)) }
+      entityKnownSVarsMap.update(e ,
+        entityKnownSVarsMap.getOrElse(e, Map[Symbol, StateParticleInfo[_]]()) + (triple.identifier -> triple)  )
+      if (triple.identifier == Name.sVarIdentifier){
+        triple.svar.observe{ a => publish(NewEntityNameArrived(e, a.toString)) }
+        triple.svar.get{ a => publish(NewEntityNameArrived(e, a.toString)) }
       }
-      triple._3.observe{ a => publish(NewSVarValueArrived(e, triple._1, a)) }
-      triple._3.get{ a => publish(NewSVarValueArrived(e, triple._1, a)) }
+      //relation SVar
+      if(triple.svar.containedValueManifest <:< gt.Relation.classTag) {
+        triple.svar.observe{ a =>
+          val rel = a.asInstanceOf[Relation]
+          publish(NewSVarValueArrived(e, triple.identifier, triple,  rel.getObject)) }
+        triple.svar.get{ a =>
+          val rel = a.asInstanceOf[Relation]
+          publish(NewSVarValueArrived(e, triple.identifier, triple, rel.getObject)) }
+      }
+      //all other SVar
+      else
+      {
+        triple.svar.observe{ a => publish(NewSVarValueArrived(e, triple.identifier, triple,  a)) }
+        triple.svar.get{ a => publish(NewSVarValueArrived(e, triple.identifier, triple, a)) }
+      }
+    }
+
+    //observe Entity for changes
+    e.onUpdate{ newEntity : Entity =>
+      val knownSVars = entityKnownSVarsMap.getOrElse(e,Map[Symbol, StateParticle[_]]())
+      val currentSVars : Map[Symbol, StateParticleInfo[_]]= {
+        (for ( v <- newEntity.getAllStateParticles ) yield v.identifier -> v).toMap
+      }
+
+      //sVars to ADD
+      val addMap = currentSVars.filterNot( elem => knownSVars.contains(elem._1))
+      //add to knownSVarsMap
+      entityKnownSVarsMap.update(e, entityKnownSVarsMap.getOrElse(e,Map[Symbol, StateParticleInfo[_]]() ) ++ addMap)
+      //add observer and update View
+      addMap.foreach{ tupel =>
+        if (tupel._1 == Name.sVarIdentifier){
+          tupel._2.svar.observe{ a => publish(NewEntityNameArrived(e, a.toString)) }
+          tupel._2.svar.get{ a => publish(NewEntityNameArrived(e, a.toString)) }
+        }
+        //relation SVar
+        if(tupel._2.svar.containedValueManifest <:< gt.Relation.classTag) {
+          tupel._2.svar.observe{ a =>
+            val rel = a.asInstanceOf[Relation]
+            publish(UpdateSVarOfEntity(e, tupel._1, tupel._2, rel.getObject)) }
+          tupel._2.svar.get{ a =>
+            val rel = a.asInstanceOf[Relation]
+            publish(UpdateSVarOfEntity(e, tupel._1, tupel._2, rel.getObject)) }
+        }
+        //all other SVar
+        else {
+          tupel._2.svar.observe{ a => publish(UpdateSVarOfEntity(e, tupel._1 , tupel._2, a)) }
+          tupel._2.svar.get{ a => publish(UpdateSVarOfEntity(e, tupel._1 , tupel._2, a)) }
+        }
+      }
+
+      //sVars to REMOVE
+      val removeMap = knownSVars.filterNot( elem => currentSVars.contains(elem._1))
+      //remove from knownSVarsMap
+      entityKnownSVarsMap.update(e, entityKnownSVarsMap.getOrElse(
+        e,Map[Symbol, StateParticleInfo[_]]() ).filterNot( elem => removeMap.contains(elem._1)))
+      //update View
+      removeMap.foreach{ tupel =>
+        publish(RemoveSVarFromEntity(e, tupel._1))
+      }
     }
   }
 

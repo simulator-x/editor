@@ -69,6 +69,7 @@
           <fileName>src/ConstMat4fSVarViewGeneratore1688f7d34ec439e8fe5685c6da36f9c.scala</fileName>
           <className>simx.components.editor.gui.ConstMat4fSVarViewGeneratore1688f7d34ec439e8fe5685c6da36f9c</className>
           <usedForSVars>
+            <sVarIdentifier>HeadTransform</sVarIdentifier>
             <sVarIdentifier>Transformation</sVarIdentifier>
             <sVarIdentifier>headTransform</sVarIdentifier>
             <sVarIdentifier>viewPlatform</sVarIdentifier>
@@ -126,6 +127,18 @@
           <fileName>src/ConstVec3fSVarViewGeneratorfb96af7dac0d4dd6a9ebc613ba2295e4.scala</fileName>
           <className>simx.components.editor.gui.ConstVec3fSVarViewGeneratorfb96af7dac0d4dd6a9ebc613ba2295e4</className>
           <usedForSVars/>
+        </SVarView>
+      </SVarViews>
+    </TypedSvarView>
+    <TypedSvarView>
+      <typeInfo>simx.core.helper.TextureData</typeInfo>
+      <SVarViews>
+        <SVarView>
+          <fileName>src/TextureDataSVarViewGenerator4857baf5b0ea4a549c63c0bff6c31e72.scala</fileName>
+          <className>simx.components.editor.gui.TextureDataSVarViewGenerator4857baf5b0ea4a549c63c0bff6c31e72</className>
+          <usedForSVars>
+            <sVarIdentifier>Texture</sVarIdentifier>
+          </usedForSVars>
         </SVarView>
       </SVarViews>
     </TypedSvarView>
@@ -273,6 +286,18 @@
           <className>simx.components.editor.gui.ConstVec2fSVarSetterGenerator039be9b1d2e541669f4dd62d68327236</className>
           <usedForSVars>
             <sVarIdentifier>Position2D</sVarIdentifier>
+          </usedForSVars>
+        </SVarSetter>
+      </SVarSetters>
+    </TypedSvarSetter>
+    <TypedSvarSetter>
+      <typeInfo>simx.core.helper.TextureData</typeInfo>
+      <SVarSetters>
+        <SVarSetter>
+          <fileName>src/TextureDataSVarSetterGenerator1e931f44987c4fe69be5bfeeb420689b.scala</fileName>
+          <className>simx.components.editor.gui.TextureDataSVarSetterGenerator1e931f44987c4fe69be5bfeeb420689b</className>
+          <usedForSVars>
+            <sVarIdentifier>Texture</sVarIdentifier>
           </usedForSVars>
         </SVarSetter>
       </SVarSetters>

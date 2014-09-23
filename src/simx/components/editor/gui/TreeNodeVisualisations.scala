@@ -75,18 +75,21 @@ class TreeNodeVisualisations(configFile: File, editorActor: SVarActor.Ref) {
     case n: EnRoot => simpleLabelView(n, n.appName _)
     case n: EnEntity => simpleLabelView(n, "Entity")
     case n: EnSVarCollection => simpleLabelView(n, "SVars")
+    case n: EnSVarRelation => simpleLabelView(n, "Relation")
+    case n: EnSVarRelationValue =>  simpleLabelView(n, "Entity")
     case n: EnSVar =>
       val typeInfo = n.sVar.containedValueManifest
       //Check manifests
       if(debug)
-        if(SVarDescription(Symbol(typeInfo.toString())).head.typeTag != n.sVar.containedValueManifest) {
+        println("Debug Output is not supported here, since registry of SVarDescriptions moved to WorldInterface")
+        /*if(SVarDescription(Symbol(typeInfo.toString())).head.classTag != n.sVar.containedValueManifest) {
           println("Warning: Manifest difference between " +
-            SVarDescription(Symbol(typeInfo.toString())).head.typeTag + " and " + n.name.name + "!")
+            SVarDescription(Symbol(typeInfo.toString())).head.classTag + " and " + n.name.name + "!")
           println("Onto: " +
             SVarDescription(Symbol(typeInfo.toString())).head.classTag.runtimeClass.getCanonicalName)
           println("SVar: " +
             n.sVar.containedValueManifest)
-        }
+        }*/
 
       if(!typeViews.contains(Symbol(typeInfo.toString())))
         typeViews += (Symbol(typeInfo.toString()) -> makeSet[DynamicReloader[SVarViewGeneratorBase]])
@@ -127,19 +130,21 @@ class TreeNodeVisualisations(configFile: File, editorActor: SVarActor.Ref) {
     case n: EnCreateParam =>
       //Check manifests
       if(debug)
-        if(SVarDescription(Symbol(n.cp.typedSemantics.typeTag.toString())).head.typeTag !=
+        println("Debug Output is not supported here, since registry of SVarDescriptions moved to WorldInterface")
+      /*
+        if(SVarDescription(Symbol(n.cp.typedSemantics.classTag.toString())).head.classTag !=
           n.cp.containedValueManifest)
         {
           println("Warning: Manifest difference between " +
-            SVarDescription(Symbol(n.cp.typedSemantics.typeTag.toString())).head.sVarIdentifier + " and " +
+            SVarDescription(Symbol(n.cp.typedSemantics.classTag.toString())).head.sVarIdentifier + " and " +
             n.cp.typedSemantics.sVarIdentifier.name + "!")
-          println("Onto: " + SVarDescription(Symbol(n.cp.typedSemantics.typeTag.toString())).
+          println("Onto: " + SVarDescription(Symbol(n.cp.typedSemantics.classTag.toString())).
             head.classTag.runtimeClass.getCanonicalName)
           println("SVar: " + n.cp.containedValueManifest.runtimeClass.getCanonicalName)
-        }
+        }    */
 
-      if(!typeViews.contains(Symbol(n.cp.typedSemantics.typeTag.toString())))
-        typeViews += (Symbol(n.cp.typedSemantics.typeTag.toString())
+      if(!typeViews.contains(Symbol(n.cp.typedSemantics.classTag.toString())))
+        typeViews += (Symbol(n.cp.typedSemantics.classTag.toString())
           -> makeSet[DynamicReloader[SVarViewGeneratorBase]])
 
       new SVarViewPanel(
@@ -147,7 +152,7 @@ class TreeNodeVisualisations(configFile: File, editorActor: SVarActor.Ref) {
         sVarIdentifier = n.cp.typedSemantics.sVarIdentifier,
         man = n.cp.typedSemantics.classTag,
         sVarViews = sVarViews,
-        availableViews = typeViews(Symbol(n.cp.typedSemantics.typeTag.toString())),
+        availableViews = typeViews(Symbol(n.cp.typedSemantics.classTag.toString())),
         editorActor = editorActor,
         sourceDir = sourceDir
       )
