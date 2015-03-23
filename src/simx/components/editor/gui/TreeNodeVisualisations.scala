@@ -26,7 +26,7 @@ package simx.components.editor.gui
 
 import scala.collection.mutable
 import simx.components.editor.filesystem.DynamicReloader
-import simx.core.ontology.SVarDescription
+import simx.core.ontology.SValDescription$
 import simx.components.editor.filesystem.ClassFile
 import swing.{GridPanel, Label}
 import java.io.{FileWriter, File}

@@ -43,8 +43,8 @@ object SimXProperties {
   val pathSeparator = if(isWindows) ";" else ":"
 
   val scalaVersion = try {
-    Source.fromFile(new File(simXHome, "project/Build.scala")).getLines().
-      filter(_.contains("scalaVersion :=")).next().split('"').apply(1)
+    Source.fromFile(new File(simXHome, "project/SimXProductionBuild.scala")).getLines().
+      filter(_.contains("usedScalaVersion =")).next().split('"').apply(1)
   } catch {
     case _: Throwable =>
       throw new Exception("[error][SimXProperties] Could not determine scala version from file 'Build.scala'.")

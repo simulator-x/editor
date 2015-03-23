@@ -21,7 +21,7 @@
 package simx.components.editor
 
 import simx.core.helper.SVarUpdateFunctionMap
-import simx.core.svaractor.unifiedaccess.{StateParticleInfo, ObservableAccessSet, Relation}
+import simx.core.svaractor.unifiedaccess.{StateParticleInfo, Relation}
 import scala.collection.mutable
 import swing.Publisher
 import simx.core.component.Component
@@ -31,7 +31,6 @@ import simx.core.ontology.types.Name
 import simx.core.entity.typeconversion.ConvertibleTrait
 import simx.core.entity.Entity
 import simx.core.entity.component.ComponentAspect
-import simx.core.worldinterface.CreationMessage
 import simx.core.worldinterface.eventhandling.{Event, EventHandler, EventDescription}
 import simx.core.svaractor.{StateParticle, SVar}
 
@@ -117,7 +116,7 @@ class Editor(override val componentName : Symbol)
     e.getAllStateParticles.foreach { _.svar.ignore() /*Stop observing*/ }
 
     // cleanup local refs
-    println("remove entity " + e.toString)
+//    println("remove entity " + e.toString)
     registeredEntities = registeredEntities - e
     entityKnownSVarsMap - e
 
@@ -128,9 +127,10 @@ class Editor(override val componentName : Symbol)
   private var gui: Option[EditorPanel] = None
 
 
-  registerForCreationOf(Nil)
-  addHandler[CreationMessage]{ msg => handleCreation(msg.e, msg.e.description.aspects.map( toTuple ).toMap) }
-  handleRegisteredEntities(Nil){ _.map( e => handleCreation(e, e.description.aspects.map( toTuple ).toMap)) }
+  //registerForCreationOf(Nil)
+  //addHandler[CreationMessage]{ msg => handleCreation(msg.e, msg.e.description.aspects.map( toTuple ).toMap) }
+  handleEntityRegistration(Nil){ e => handleCreation(e, e.description.aspects.map( toTuple ).toMap) }
+  //requestRegisteredEntities(Nil){ _.map( e => handleCreation(e, e.description.aspects.map( toTuple ).toMap)) }
 
   private def toTuple(a : EntityAspect) : (Symbol, NamedSValSet) =
     a.componentType.value.toSymbol -> a.getCreateParams
@@ -165,9 +165,9 @@ class Editor(override val componentName : Symbol)
   //React to entity-creations
   def handleCreation(e: Entity, csets: Map[Symbol, NamedSValSet]){
     e.addRemoveObserver(self)()
-    e.get(gt.EventDescription).foreach( handleEventDesc(_) )
-    if(!e.getSVars(gt.EventDescription).isEmpty) return
-    if(configEntity.exists(_ == e)) return
+    e.get(gt.EventDescription).foreach( handleEventDesc _ )
+    if(e.getSVars(gt.EventDescription).nonEmpty) return
+    if(configEntity.contains(e)) return
 
     if (registeredEntities.contains(e))
       return
