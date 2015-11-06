@@ -145,7 +145,7 @@ object SimXProperties {
   private def checkHome(sysPropName: String)(additionalCheck: (File) => Boolean = (f) => true)
   {
     if(System.getProperty(sysPropName, "") == "") {
-      val wd = new File(new File("").getAbsolutePath)
+      val wd = new File(new File(".").getAbsolutePath)
       //Search for SimX home in the parent directories
       var home = wd
       1 to 10 foreach{ _ =>

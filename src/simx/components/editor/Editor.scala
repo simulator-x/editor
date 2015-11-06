@@ -228,8 +228,11 @@ class Editor(override val componentName : Symbol)
         }
         //all other SVar
         else {
-          tupel._2.svar.observe{ a => publish(UpdateSVarOfEntity(e, tupel._1 , tupel._2, a)) }
-          tupel._2.svar.get{ a => publish(UpdateSVarOfEntity(e, tupel._1 , tupel._2, a)) }
+          tupel._2.svar.get{ a =>
+            publish(UpdateSVarOfEntity(e, tupel._1 , tupel._2, a))
+            tupel._2.svar.observe{ a => publish(NewSVarValueArrived(e, tupel._1, tupel._2,  a)) }
+            tupel._2.svar.get{ a => publish(NewSVarValueArrived(e, tupel._1, tupel._2, a)) }
+          }
         }
       }
 

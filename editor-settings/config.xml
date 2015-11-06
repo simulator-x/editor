@@ -13,6 +13,18 @@
       </SVarViews>
     </TypedSvarView>
     <TypedSvarView>
+      <typeInfo>Float</typeInfo>
+      <SVarViews>
+        <SVarView>
+          <fileName>src/FloatSVarViewGenerator020dc6c063d042fd99f7a3e978919fe3.scala</fileName>
+          <className>simx.components.editor.gui.FloatSVarViewGenerator020dc6c063d042fd99f7a3e978919fe3</className>
+          <usedForSVars>
+            <sVarIdentifier>angle</sVarIdentifier>
+          </usedForSVars>
+        </SVarView>
+      </SVarViews>
+    </TypedSvarView>
+    <TypedSvarView>
       <typeInfo>java.awt.Color</typeInfo>
       <SVarViews>
         <SVarView>
@@ -59,11 +71,16 @@
           <usedForSVars/>
         </SVarView>
         <SVarView>
-          <fileName>src/ConstMat4fSVarViewGeneratorded9e79cfaca4a538cccf7da1b972311.scala</fileName>
-          <className>simx.components.editor.gui.ConstMat4fSVarViewGeneratorded9e79cfaca4a538cccf7da1b972311</className>
+          <fileName>src/ConstMat4fSVarViewGeneratora9e7bd021da34bb58ccce86016a2d187.scala</fileName>
+          <className>simx.components.editor.gui.ConstMat4fSVarViewGeneratora9e7bd021da34bb58ccce86016a2d187</className>
           <usedForSVars>
             <sVarIdentifier>transformation</sVarIdentifier>
           </usedForSVars>
+        </SVarView>
+        <SVarView>
+          <fileName>src/ConstMat4fSVarViewGeneratorded9e79cfaca4a538cccf7da1b972311.scala</fileName>
+          <className>simx.components.editor.gui.ConstMat4fSVarViewGeneratorded9e79cfaca4a538cccf7da1b972311</className>
+          <usedForSVars/>
         </SVarView>
         <SVarView>
           <fileName>src/ConstMat4fSVarViewGeneratore1688f7d34ec439e8fe5685c6da36f9c.scala</fileName>
@@ -98,10 +115,19 @@
           <usedForSVars/>
         </SVarView>
         <SVarView>
+          <fileName>src/ConstVec3fSVarViewGenerator4f5b557081d44eb8bf9a99a581d3a2fd.scala</fileName>
+          <className>simx.components.editor.gui.ConstVec3fSVarViewGenerator4f5b557081d44eb8bf9a99a581d3a2fd</className>
+          <usedForSVars>
+            <sVarIdentifier>position</sVarIdentifier>
+            <sVarIdentifier>vector3</sVarIdentifier>
+          </usedForSVars>
+        </SVarView>
+        <SVarView>
           <fileName>src/ConstVec3fSVarViewGenerator66ede5a13eab476792d916f301ca73ac.scala</fileName>
           <className>simx.components.editor.gui.ConstVec3fSVarViewGenerator66ede5a13eab476792d916f301ca73ac</className>
           <usedForSVars>
             <sVarIdentifier>Position</sVarIdentifier>
+            <sVarIdentifier>velocity</sVarIdentifier>
           </usedForSVars>
         </SVarView>
         <SVarView>
@@ -162,7 +188,9 @@
         <SVarSetter>
           <fileName>src/FloatSVarSetterGenerator5ebf46f01bd845d3a30c1c454fe4a0bc.scala</fileName>
           <className>simx.components.editor.gui.FloatSVarSetterGenerator5ebf46f01bd845d3a30c1c454fe4a0bc</className>
-          <usedForSVars/>
+          <usedForSVars>
+            <sVarIdentifier>angularDamping</sVarIdentifier>
+          </usedForSVars>
         </SVarSetter>
       </SVarSetters>
     </TypedSvarSetter>
@@ -287,6 +315,28 @@
           <usedForSVars>
             <sVarIdentifier>Position2D</sVarIdentifier>
           </usedForSVars>
+        </SVarSetter>
+      </SVarSetters>
+    </TypedSvarSetter>
+    <TypedSvarSetter>
+      <typeInfo>simplex3d.math.floatx.ConstVec3f</typeInfo>
+      <SVarSetters>
+        <SVarSetter>
+          <fileName>src/ConstVec3fSVarSetterGenerator37e399d29b8b4b0daa8e2aafe7322991.scala</fileName>
+          <className>simx.components.editor.gui.ConstVec3fSVarSetterGenerator37e399d29b8b4b0daa8e2aafe7322991</className>
+          <usedForSVars>
+            <sVarIdentifier>velocity</sVarIdentifier>
+          </usedForSVars>
+        </SVarSetter>
+      </SVarSetters>
+    </TypedSvarSetter>
+    <TypedSvarSetter>
+      <typeInfo>simx.core.helper.SpeechRecognitionResult</typeInfo>
+      <SVarSetters>
+        <SVarSetter>
+          <fileName>src/SpeechRecognitionResultSVarSetterGeneratorc8290ed426384e4fa524dfe51450858d.scala</fileName>
+          <className>simx.components.editor.gui.SpeechRecognitionResultSVarSetterGeneratorc8290ed426384e4fa524dfe51450858d</className>
+          <usedForSVars/>
         </SVarSetter>
       </SVarSetters>
     </TypedSvarSetter>

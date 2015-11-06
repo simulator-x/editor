@@ -39,7 +39,7 @@ class FloatSVarSetterGenerator5ebf46f01bd845d3a30c1c454fe4a0bc extends SVarSette
       })
       reactions += {
         case event: EditDone =>
-          setSvar(text.toFloat)
+          if(text.nonEmpty) setSvar(text.toFloat)
       }
     }
 

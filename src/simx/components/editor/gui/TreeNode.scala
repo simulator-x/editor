@@ -130,7 +130,7 @@ case class EnEntity(e: Entity, parent: Option[TreeNode], var children: Seq[TreeN
 }
 
 case class EnSVarCollection(parent: Option[TreeNode], var children: Seq[TreeNode] = Nil) extends TreeNode {
-  override def toString = "SVars"
+  override def toString = "Properties"
   override def label = toString
   override def hierarchicalOrder = 5
 }
