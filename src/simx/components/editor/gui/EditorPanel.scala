@@ -47,7 +47,7 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
   thisEditorPanel =>
 
   private val treeRoot = new EnRoot("SimX App")
-  private val sVarToNode = mutable.Map[(Entity, Symbol), TreeNodeWithValue]()
+  private val sVarToNode = mutable.Map[(Entity, StateParticleInfo[_]), TreeNodeWithValue]()
   private var displayedNodes = Map[TreeNode, (Frame, DetailsView)]()
   private var selectedPath: List[TreeNode] = treeRoot.getPath
 
@@ -210,7 +210,7 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
 //      })
 
       var updateListPanel = false
-      val node : TreeNodeWithValue = sVarToNode.getOrElse((msg.e, msg.sVarName), {
+      val node : TreeNodeWithValue = sVarToNode.getOrElse((msg.e, msg.sParInfo), {
         updateListPanel=true
         addNewSVarToTree(msg.e, (msg.sVarName, msg.sParInfo), findSVarCollectionNodeOf(msg.e))
       })
@@ -239,7 +239,7 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
 
   addSynchronizedReaction {
     case msg: UpdateSVarOfEntity =>
-      val node : TreeNodeWithValue = sVarToNode.getOrElse((msg.e, msg.sVarName), {
+      val node : TreeNodeWithValue = sVarToNode.getOrElse((msg.e, msg.sParInfo), {
         var n : TreeNode = treeRoot
         val sVarCollNode = findSVarCollectionNodeOf(msg.e)
         n = addNewSVarToTree(msg.e, (msg.sVarName, msg.sParInfo), sVarCollNode)
@@ -404,13 +404,13 @@ class EditorPanel(editorComponentActor: Editor) extends MainFrame with Synchroni
     //'relation' SVar
     if (x._2.svar.containedValueManifest <:< gt.Relation.classTag) {
       val node = new EnSVarRelationValue(Some(EnSVarRelation(x._2, x._1, parent)))
-      sVarToNode.update((e, x._1), node)
+      sVarToNode.update((e, x._2), node)
       node
     }
     //all other SVar
     else {
       val node = new EnSVarValue(!x._2.svar.isMutable, Some(EnSVar(x._2, x._1, parent)))
-      sVarToNode.update((e, x._1), node)
+      sVarToNode.update((e, x._2), node)
       node
     }
   }
